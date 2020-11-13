@@ -132,7 +132,6 @@ KNOWN_EXTRA_OUTPUT_KEYS = [
 
 
 def _generate_page_configs():
-    page_configs = []
     session = botocore.session.get_session()
     loader = session.get_component('data_loader')
     services = loader.list_available_services('paginators-1')
@@ -142,7 +141,6 @@ def _generate_page_configs():
                                                 'paginators-1',
                                                 service_model.api_version)
         yield (service_model, page_config['pagination'])
-    return page_configs
 
 
 @pytest.mark.parametrize('service_model, pagination', _generate_page_configs())
