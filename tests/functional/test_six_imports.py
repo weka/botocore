@@ -7,19 +7,20 @@ import pytest
 ROOTDIR = os.path.dirname(botocore.__file__)
 
 
-@pytest.mark.parametrize("rootdir,dirnames,filenames", os.walk(ROOTDIR))
-def test_no_bare_six_imports(rootdir, dirnames, filenames):
-    if 'vendored' in dirnames:
-        # We don't need to lint our vendored packages.
-        dirnames.remove('vendored')
-    for filename in filenames:
-        if not filename.endswith('.py'):
-            continue
-        fullname = os.path.join(rootdir, filename)
-        _assert_no_bare_six_imports(fullname)
+def _all_py_files():
+    for rootdir, dirnames, filenames in os.walk(ROOTDIR):
+        if 'vendored' in dirnames:
+            # We don't need to lint our vendored packages.
+            dirnames.remove('vendored')
+        for filename in filenames:
+            if not filename.endswith('.py'):
+                continue
+            fullname = os.path.join(rootdir, filename)
+            yield fullname
 
 
-def _assert_no_bare_six_imports(filename):
+@pytest.mark.parametrize('filename', _all_py_files())
+def test_no_bare_six_imports(filename):
     with open(filename) as f:
         contents = f.read()
         parsed = ast.parse(contents, filename)

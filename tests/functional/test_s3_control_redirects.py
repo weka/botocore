@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import re
+import pytest
 from contextlib import contextmanager
 from tests import unittest, mock, BaseSessionTest, ClientHTTPStubber
 
@@ -324,26 +325,34 @@ def _bootstrap_test_case_client(session, test_case):
     return _bootstrap_client(session, region, config=config)
 
 
-def test_accesspoint_arn_redirection():
+def _accesspoint_arn_redirection_cases():
     session = _bootstrap_session()
     for test_case in ACCESSPOINT_ARN_TEST_CASES:
         client, stubber = _bootstrap_test_case_client(session, test_case)
-        yield _test_accesspoint_arn, test_case, client, stubber
+        yield test_case, client, stubber
 
 
-def _test_accesspoint_arn(test_case, client, stubber):
+@pytest.mark.parametrize(
+    'test_case, client, stubber',
+    _accesspoint_arn_redirection_cases(),
+)
+def test_accesspoint_arn(test_case, client, stubber):
     with _assert_test_case(test_case, client, stubber):
         client.get_access_point_policy(Name=test_case['arn'])
 
 
-def test_bucket_arn_redirection():
+def _bucket_arn_redirection_cases():
     session = _bootstrap_session()
     for test_case in BUCKET_ARN_TEST_CASES:
         client, stubber = _bootstrap_test_case_client(session, test_case)
-        yield _test_bucket_arn, test_case, client, stubber
+        yield test_case, client, stubber
 
 
-def _test_bucket_arn(test_case, client, stubber):
+@pytest.mark.parametrize(
+    'test_case, client, stubber',
+    _bucket_arn_redirection_cases(),
+)
+def test_bucket_arn(test_case, client, stubber):
     with _assert_test_case(test_case, client, stubber):
         client.get_bucket(Bucket=test_case['arn'])
 

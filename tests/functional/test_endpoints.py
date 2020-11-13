@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import pytest
 from botocore.session import get_session
 
 
@@ -93,7 +94,7 @@ NOT_SUPPORTED_IN_SDK = [
 ]
 
 
-def test_endpoint_matches_service():
+def _known_endpoint_prefix_cases():
     # This verifies client names match up with data from the endpoints.json
     # file.  We want to verify that every entry in the endpoints.json
     # file corresponds to a client we can construct via
@@ -134,14 +135,18 @@ def test_endpoint_matches_service():
         # prefix.
         endpoint_prefix = ENDPOINT_PREFIX_OVERRIDE.get(endpoint_prefix,
                                                        endpoint_prefix)
-        _assert_known_endpoint_prefix(endpoint_prefix, known_endpoint_prefixes)
+        yield endpoint_prefix, known_endpoint_prefixes
 
 
-def _assert_known_endpoint_prefix(endpoint_prefix, known_endpoint_prefixes):
+@pytest.mark.parametrize(
+    'endpoint_prefix, known_endpoint_prefixes',
+    _known_endpoint_prefix_cases(),
+)
+def test_endpoint_prefix_known(endpoint_prefix, known_endpoint_prefixes):
     assert endpoint_prefix in known_endpoint_prefixes
 
 
-def test_service_name_matches_endpoint_prefix():
+def _service_name_matches_endpoint_prefix_cases():
     # Generates tests for each service to verify that the computed service
     # named based on the service id matches the service name used to
     # create a client (i.e the directory name in botocore/data)
@@ -154,10 +159,14 @@ def test_service_name_matches_endpoint_prefix():
     services = loader.list_available_services('service-2')
 
     for service in services:
-        _assert_service_name_matches_endpoint_prefix(session, service)
+        yield session, service
 
 
-def _assert_service_name_matches_endpoint_prefix(session, service_name):
+@pytest.mark.parametrize(
+    "session, service_name",
+    _service_name_matches_endpoint_prefix_cases(),
+)
+def test_service_name_matches_endpoint_prefix(session, service_name):
     service_model = session.get_service_model(service_name)
     computed_name = service_model.service_id.replace(' ', '-').lower()
 

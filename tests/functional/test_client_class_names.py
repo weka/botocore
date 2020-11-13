@@ -10,11 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import pytest
 from tests import unittest
+
 import botocore.session
 
-REGION = 'us-east-1'
 
+REGION = 'us-east-1'
 SERVICE_TO_CLASS_NAME = {
     'autoscaling': 'AutoScaling',
     'cloudformation': 'CloudFormation',
@@ -67,9 +69,13 @@ SERVICE_TO_CLASS_NAME = {
 }
 
 
-class TestClientClassNames(unittest.TestCase):
-    def test_client_has_correct_class_name(self):
-        session = botocore.session.get_session()
-        for service_name in SERVICE_TO_CLASS_NAME:
-            client = session.create_client(service_name, REGION)
-            assert client.__class__.__name__ == SERVICE_TO_CLASS_NAME[service_name]
+def _client_name_cases():
+    session = botocore.session.get_session()
+    for service_name, client_name in SERVICE_TO_CLASS_NAME.items():
+        client = session.create_client(service_name, REGION)
+        yield client.__class__.__name__, client_name
+
+
+@pytest.mark.parametrize("client_cls_name, client_name", _client_name_cases())
+def test_client_has_correct_class_name(client_cls_name, client_name):
+        assert client_cls_name == client_name

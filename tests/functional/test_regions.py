@@ -465,19 +465,23 @@ def test_all_s3_endpoints_have_s3v4():
             assert 's3v4' in resolved['signatureVersions']
             assert 'v4' not in resolved['signatureVersions']
 
-def _test_single_service_partition_endpoint(service_name,
-                                            expected_endpoint,
-                                            resolver):
+
+def _known_endpoints():
+    session = _get_patched_session()
+    resolver = session._get_internal_component('endpoint_resolver')
+    for service_name, endpoint in KNOWN_AWS_PARTITION_WIDE.items():
+        yield service_name, endpoint, resolver
+
+
+@pytest.mark.parametrize(
+    'service_name, endpoint, resolver',
+    _known_endpoints(),
+)
+def test_single_service_partition_endpoint(service_name, endpoint, resolver):
     bridge = ClientEndpointBridge(resolver)
     result = bridge.resolve(service_name)
-    assert result['endpoint_url'] == expected_endpoint
+    assert result['endpoint_url'] == endpoint
 
-def test_known_endpoints_other():
-    resolver = _get_patched_session()._get_internal_component(
-        'endpoint_resolver')
-    for service_name, endpoint in KNOWN_AWS_PARTITION_WIDE.items():
-        _test_single_service_partition_endpoint(service_name,
-                                                     endpoint, resolver)
 
 def test_non_partition_endpoint_requires_region():
     resolver = _get_patched_session()._get_internal_component(

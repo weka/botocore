@@ -83,28 +83,38 @@ WAITER_SCHEMA = {
 }
 
 
-@pytest.mark.parametrize("service_name", botocore.session.get_session().get_available_services())
-def test_lint_waiter_configs(service_name):
+def _all_waiter_models():
     session = botocore.session.get_session()
+    for service_name in session.get_available_services():
+        try:
+            # We use the loader directly here because we need the entire
+            # json document, not just the portions exposed (either
+            # internally or externally) by the WaiterModel class.
+            loader = session.get_component('data_loader')
+            waiter_model = loader.load_service_model(service_name, 'waiters-2')
+            yield waiter_model
+        except UnknownServiceError:
+            # The service doesn't have waiters
+            continue
+
+
+@pytest.mark.parametrize("waiter_model", _all_waiter_models())
+def test_validate_waiter_schema(waiter_model):
     validator = Draft4Validator(WAITER_SCHEMA)
-    client = session.create_client(service_name, 'us-east-1')
-    service_model = client.meta.service_model
-    try:
-        # We use the loader directly here because we need the entire
-        # json document, not just the portions exposed (either
-        # internally or externally) by the WaiterModel class.
-        loader = session.get_component('data_loader')
-        waiter_model = loader.load_service_model(
-            service_name, 'waiters-2')
-    except UnknownServiceError:
-        # The service doesn't have waiters
-        return
     _validate_schema(validator, waiter_model)
-    for waiter_name in client.waiter_names:
-        _lint_single_waiter(client, waiter_name, service_model)
 
 
-def _lint_single_waiter(client, waiter_name, service_model):
+def _all_waiters():
+    session = botocore.session.get_session()
+    for service_name in session.get_available_services():
+        client = session.create_client(service_name, 'us-east-1')
+        service_model = client.meta.service_model
+        for waiter_name in client.waiter_names:
+            yield client, waiter_name, service_model
+
+
+@pytest.mark.parametrize("client, waiter_name, service_model", _all_waiters())
+def test_lint_waiter_configs(client, waiter_name, service_model):
     try:
         waiter = client.get_waiter(waiter_name)
         # The 'acceptors' property is dynamic and will create
