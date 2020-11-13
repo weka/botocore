@@ -74,8 +74,8 @@ def path(filename):
 class TestCredentials(BaseEnvVar):
     def _ensure_credential_is_normalized_as_unicode(self, access, secret):
         c = credentials.Credentials(access, secret)
-        assert isinstance(c.access_key, str)
-        assert isinstance(c.secret_key, str)
+        assert isinstance(c.access_key, six.text_type)
+        assert isinstance(c.secret_key, six.text_type)
 
     def test_detect_nonascii_character(self):
         self._ensure_credential_is_normalized_as_unicode(
