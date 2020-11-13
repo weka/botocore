@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 import re
 from contextlib import contextmanager
-from nose.tools import assert_equal, assert_true, assert_raises
 from tests import unittest, mock, BaseSessionTest, ClientHTTPStubber
 
 from botocore import exceptions
@@ -283,22 +282,22 @@ def _assert_signing_name(stubber, expected_name):
     request = stubber.requests[0]
     auth_header = request.headers['Authorization'].decode('utf-8')
     actual_name = V4_AUTH_REGEX.match(auth_header).group('name')
-    assert_equal(expected_name, actual_name)
+    assert expected_name == actual_name
 
 
 def _assert_netloc(stubber, expected_netloc):
     request = stubber.requests[0]
     url_parts = urlsplit(request.url)
-    assert_equal(expected_netloc, url_parts.netloc)
+    assert expected_netloc == url_parts.netloc
 
 
 def _assert_header(stubber, key, value):
     request = stubber.requests[0]
-    assert_true(key in request.headers)
+    assert key in request.headers
     actual_value = request.headers[key]
     if isinstance(actual_value, bytes):
         actual_value = actual_value.decode('utf-8')
-    assert_equal(value, actual_value)
+    assert value == actual_value
 
 
 def _assert_headers(stubber, headers):
@@ -372,7 +371,7 @@ def _assert_test_case(test_case, client, stubber):
         ) % (exception_cls, type(exception_raised))
         assert isinstance(exception_raised, exception_cls), error_msg
     else:
-        assert_equal(len(stubber.requests), 1)
+        assert len(stubber.requests) == 1
         if 'signing_name' in assertions:
             _assert_signing_name(stubber, assertions['signing_name'])
         if 'headers' in assertions:
