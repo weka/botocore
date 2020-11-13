@@ -52,6 +52,7 @@ can set the BOTOCORE_TEST_ID env var with the ``suite_id:test_id`` syntax.
 """
 import os
 import copy
+import pytest
 
 from base64 import b64decode
 from dateutil.tz import tzutc
@@ -92,16 +93,24 @@ PROTOCOL_TEST_BLACKLIST = [
 ]
 
 
-def test_compliance():
-    for full_path in _walk_files():
-        if full_path.endswith('.json'):
-            for model, case, basename in _load_cases(full_path):
-                if model.get('description') in PROTOCOL_TEST_BLACKLIST:
-                    continue
-                if 'params' in case:
-                    _test_input(model, case, basename)
-                elif 'response' in case:
-                    _test_output(model, case, basename)
+def _load_case_files():
+   for full_path in _walk_files():
+       if full_path.endswith('.json'):
+           for model, case, basename in _load_cases(full_path):
+               if model.get('description') in PROTOCOL_TEST_BLACKLIST:
+                   continue
+               yield model, case, basename
+
+
+@pytest.mark.parametrize("model, case, basename", _load_case_files())
+def test_compliance(model, case, basename):
+    if 'params' in case:
+        _test_input(model, case, basename)
+    elif 'response' in case:
+        _test_output(model, case, basename)
+    else:
+        fmt = (model.get('description'), basename)
+        raise RuntimeError("Invalid case: '%s' in %s" % fmt)
 
 
 def _test_input(json_description, case, basename):
@@ -140,7 +149,7 @@ def _assert_endpoints_equal(actual, expected, endpoint):
         return
     prepare_request_dict(actual, endpoint)
     actual_host = urlsplit(actual['url']).netloc
-    rich_assert_equal(actual_host, expected['host'], 'Host')
+    assert_equal(actual_host, expected['host'], 'Host')
 
 
 class MockRawResponse(object):
@@ -206,7 +215,7 @@ def _test_output(json_description, case, basename):
             expected_result.update(case['error'])
         else:
             expected_result = case['result']
-        rich_assert_equal(parsed, expected_result, "Body")
+        assert_equal(parsed, expected_result, "Body")
     except Exception as e:
         _output_failure_message(model.metadata['protocol'],
                                 case, parsed, expected_result, e)
@@ -316,7 +325,7 @@ def _try_json_dump(obj):
         return str(obj)
 
 
-def rich_assert_equal(first, second, prefix):
+def assert_equal(first, second, prefix):
     # A better assert equals.  It allows you to just provide
     # prefix instead of the entire message.
     try:
@@ -351,14 +360,14 @@ def _serialize_request_description(request_dict):
 
 
 def _assert_requests_equal(actual, expected):
-    rich_assert_equal(actual['body'], expected.get('body', '').encode('utf-8'),
+    assert_equal(actual['body'], expected.get('body', '').encode('utf-8'),
                  'Body value')
     actual_headers = dict(actual['headers'])
     expected_headers = expected.get('headers', {})
-    rich_assert_equal(actual_headers, expected_headers, "Header values")
-    rich_assert_equal(actual['url_path'], expected.get('uri', ''), "URI")
+    assert_equal(actual_headers, expected_headers, "Header values")
+    assert_equal(actual['url_path'], expected.get('uri', ''), "URI")
     if 'method' in expected:
-        rich_assert_equal(actual['method'], expected['method'], "Method")
+        assert_equal(actual['method'], expected['method'], "Method")
 
 
 def _walk_files():

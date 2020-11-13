@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from tests import unittest, RawResponse
 import datetime
+import itertools
 import pytest
 
 from dateutil.tz import tzutc
@@ -1292,23 +1293,20 @@ class TestParseErrorResponses(unittest.TestCase):
         assert error['Message'] == ''
 
 
-def test_can_handle_generic_error_message():
-    # There are times when you can get a service to respond with a generic
-    # html error page.  We should be able to handle this case.
-    for parser_cls in parsers.PROTOCOL_PARSERS.values():
-        generic_html_body = (
-            '<html><body><b>Http/1.1 Service Unavailable</b></body></html>'
-        ).encode('utf-8')
-        empty_body = b''
-        none_body = None
-        _assert_parses_generic_error, parser_cls(), generic_html_body
-        _assert_parses_generic_error, parser_cls(), empty_body
-        _assert_parses_generic_error, parser_cls(), none_body
+PARSER_CLASSES = parsers.PROTOCOL_PARSERS.values()
+GENERIC_ERROR_BODY = (
+    '<html><body><b>Http/1.1 Service Unavailable</b></body></html>'
+).encode('utf-8')
 
 
-def _assert_parses_generic_error(parser, body):
+@pytest.mark.parametrize(
+    "parser_cls, body",
+    itertools.product(PARSER_CLASSES, [b'', None, GENERIC_ERROR_BODY]),
+)
+def test_can_handle_generic_error_message(parser_cls, body):
     # There are times when you can get a service to respond with a generic
     # html error page.  We should be able to handle this case.
+    parser = parser_cls()
     parsed = parser.parse({
         'body': body, 'headers': {}, 'status_code': 503}, None)
     assert parsed['Error'] == {

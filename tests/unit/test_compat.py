@@ -13,6 +13,7 @@
 import datetime
 from tests import mock
 import pytest
+import itertools
 
 from botocore.exceptions import MD5UnavailableError
 from botocore.compat import (
@@ -97,67 +98,75 @@ class TestGetMD5(unittest.TestCase):
                 get_md5()
 
 
-class TestCompatShellSplit(unittest.TestCase):
-    def test_compat_shell_split_windows(self):
-        windows_cases = {
-            r'': [],
-            r'spam \\': [r'spam', '\\\\'],
-            r'spam ': [r'spam'],
-            r' spam': [r'spam'],
-            'spam eggs': [r'spam', r'eggs'],
-            'spam\teggs': [r'spam', r'eggs'],
-            'spam\neggs': ['spam\neggs'],
-            '""': [''],
-            '" "': [' '],
-            '"\t"': ['\t'],
-            '\\\\': ['\\\\'],
-            '\\\\ ': ['\\\\'],
-            '\\\\\t': ['\\\\'],
-            r'\"': ['"'],
-            # The following four test cases are official test cases given in
-            # Microsoft's documentation.
-            r'"abc" d e': [r'abc', r'd', r'e'],
-            r'a\\b d"e f"g h': [r'a\\b', r'de fg', r'h'],
-            r'a\\\"b c d': [r'a\"b', r'c', r'd'],
-            r'a\\\\"b c" d e': [r'a\\b c', r'd', r'e']
-        }
-        for input_string, expected_output in windows_cases.items():
-            assert compat_shell_split(input_string, "win32") == expected_output
+WINDOWS_SHELL_SPLIT_CASES = {
+    r'': [],
+    r'spam \\': [r'spam', '\\\\'],
+    r'spam ': [r'spam'],
+    r' spam': [r'spam'],
+    'spam eggs': [r'spam', r'eggs'],
+    'spam\teggs': [r'spam', r'eggs'],
+    'spam\neggs': ['spam\neggs'],
+    '""': [''],
+    '" "': [' '],
+    '"\t"': ['\t'],
+    '\\\\': ['\\\\'],
+    '\\\\ ': ['\\\\'],
+    '\\\\\t': ['\\\\'],
+    r'\"': ['"'],
+    # The following four test cases are official test cases given in
+    # Microsoft's documentation.
+    r'"abc" d e': [r'abc', r'd', r'e'],
+    r'a\\b d"e f"g h': [r'a\\b', r'de fg', r'h'],
+    r'a\\\"b c d': [r'a\"b', r'c', r'd'],
+    r'a\\\\"b c" d e': [r'a\\b c', r'd', r'e']
+}
 
-        with pytest.raises(ValueError):
-            compat_shell_split(r'"', "win32")
 
-    def test_compat_shell_split_unix(self):
-        unix_cases = {
-            r'': [],
-            r'spam \\': [r'spam', '\\'],
-            r'spam ': [r'spam'],
-            r' spam': [r'spam'],
-            'spam eggs': [r'spam', r'eggs'],
-            'spam\teggs': [r'spam', r'eggs'],
-            'spam\neggs': ['spam', 'eggs'],
-            '""': [''],
-            '" "': [' '],
-            '"\t"': ['\t'],
-            '\\\\': ['\\'],
-            '\\\\ ': ['\\'],
-            '\\\\\t': ['\\'],
-            r'\"': ['"'],
-            # The following four test cases are official test cases given in
-            # Microsoft's documentation, but adapted to unix shell splitting.
-            r'"abc" d e': [r'abc', r'd', r'e'],
-            r'a\\b d"e f"g h': [r'a\b', r'de fg', r'h'],
-            r'a\\\"b c d': [r'a\"b', r'c', r'd'],
-            r'a\\\\"b c" d e': [r'a\\b c', r'd', r'e']
-        }
-        for input_string, expected_output in unix_cases.items():
-            assert compat_shell_split(input_string, "linux2") == expected_output
-            assert compat_shell_split(input_string, "darwin") == expected_output
+@pytest.mark.parametrize(
+    "input_string, expected_output",
+    WINDOWS_SHELL_SPLIT_CASES.items(),
+)
+def test_compat_shell_split_windows(input_string, expected_output):
+    assert compat_shell_split(input_string, "win32") == expected_output
 
-        with pytest.raises(ValueError):
-            compat_shell_split(r'"', "linux2")
-        with pytest.raises(ValueError):
-            compat_shell_split(r'"', "darwin")
+
+UNIX_SHELL_SPLIT_CASES = {
+    r'': [],
+    r'spam \\': [r'spam', '\\'],
+    r'spam ': [r'spam'],
+    r' spam': [r'spam'],
+    'spam eggs': [r'spam', r'eggs'],
+    'spam\teggs': [r'spam', r'eggs'],
+    'spam\neggs': ['spam', 'eggs'],
+    '""': [''],
+    '" "': [' '],
+    '"\t"': ['\t'],
+    '\\\\': ['\\'],
+    '\\\\ ': ['\\'],
+    '\\\\\t': ['\\'],
+    r'\"': ['"'],
+    # The following four test cases are official test cases given in
+    # Microsoft's documentation, but adapted to unix shell splitting.
+    r'"abc" d e': [r'abc', r'd', r'e'],
+    r'a\\b d"e f"g h': [r'a\b', r'de fg', r'h'],
+    r'a\\\"b c d': [r'a\"b', r'c', r'd'],
+    r'a\\\\"b c" d e': [r'a\\b c', r'd', r'e']
+}
+
+
+@pytest.mark.parametrize(
+    "platform, test_case",
+    itertools.product(["linux2", "darwin"], UNIX_SHELL_SPLIT_CASES.items()),
+)
+def test_compat_shell_split_unix(platform, test_case):
+    input_string, expected_output = test_case
+    assert compat_shell_split(input_string, platform) == expected_output
+
+
+@pytest.mark.parametrize("platform", ["linux2", "darwin", "win32"])
+def test_compat_shell_split_error(platform):
+    with pytest.raises(ValueError):
+        compat_shell_split(r'"', platform)
 
 
 class TestTimezoneOperations(unittest.TestCase):

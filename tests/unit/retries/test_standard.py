@@ -1,3 +1,5 @@
+import pytest
+import itertools
 from tests import unittest
 
 from tests import mock
@@ -150,39 +152,46 @@ SERVICE_DESCRIPTION_WITH_RETRIES = {
 }
 
 
-def test_can_detect_retryable_transient_errors():
+@pytest.mark.parametrize("case", RETRYABLE_TRANSIENT_ERRORS)
+def test_can_detect_retryable_transient_errors(case):
     transient_checker = standard.TransientRetryableChecker()
-    for case in RETRYABLE_TRANSIENT_ERRORS:
-        _verify_retryable(transient_checker, None, *case)
+    _verify_retryable(transient_checker, None, *case)
 
 
-def test_can_detect_retryable_throttled_errors():
+@pytest.mark.parametrize("case", RETRYABLE_THROTTLED_RESPONSES)
+def test_can_detect_retryable_throttled_errors(case):
     throttled_checker = standard.ThrottledRetryableChecker()
-    for case in RETRYABLE_THROTTLED_RESPONSES:
-        _verify_retryable(throttled_checker, None, *case)
+    _verify_retryable(throttled_checker, None, *case)
 
 
-def test_can_detect_modeled_retryable_errors():
+@pytest.mark.parametrize("case", RETRYABLE_MODELED_ERRORS)
+def test_can_detect_modeled_retryable_errors(case):
     modeled_retry_checker = standard.ModeledRetryableChecker()
-    for case in RETRYABLE_MODELED_ERRORS:
-        _verify_retryable(modeled_retry_checker,
-                          get_operation_model_with_retries(), *case)
+    op_model = get_operation_model_with_retries()
+    _verify_retryable(modeled_retry_checker, op_model, *case)
 
 
-def test_standard_retry_conditions():
+def _all_generic_cases():
+    all_cases = itertools.chain(
+        RETRYABLE_TRANSIENT_ERRORS,
+        RETRYABLE_THROTTLED_RESPONSES,
+        RETRYABLE_MODELED_ERRORS,
+    )
+    for case in all_cases:
+        # It's possible that cases that are retryable for an individual checker
+        # are retryable for a different checker.  We need to filter out all
+        # the False cases.
+        if case[2]:
+            yield case
+
+
+@pytest.mark.parametrize("case", _all_generic_cases())
+def test_standard_retry_conditions(case):
     # This is verifying that the high level object used for checking
     # retry conditions still handles all the individual testcases.
     standard_checker = standard.StandardRetryConditions()
     op_model = get_operation_model_with_retries()
-    all_cases = (
-        RETRYABLE_TRANSIENT_ERRORS + RETRYABLE_THROTTLED_RESPONSES +
-        RETRYABLE_MODELED_ERRORS)
-    # It's possible that cases that are retryable for an individual checker
-    # are retryable for a different checker.  We need to filter out all
-    # the False cases.
-    all_cases = [c for c in all_cases if c[2]]
-    for case in all_cases:
-        _verify_retryable(standard_checker, op_model, *case)
+    _verify_retryable(standard_checker, op_model, *case)
 
 
 def get_operation_model_with_retries():

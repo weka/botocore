@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """Unit tests for the binary event stream decoder. """
 
+import pytest
 from tests import mock
 
 from botocore.parsers import EventStreamXMLParser
@@ -270,10 +271,9 @@ def check_message_decodes(encoded, decoded):
     assert_message_equal(messages[0], decoded)
 
 
-def test_positive_cases():
-    """Test that all positive cases decode how we expect. """
-    for (encoded, decoded) in POSITIVE_CASES:
-        check_message_decodes(encoded, decoded)
+@pytest.mark.parametrize("encoded, decoded", POSITIVE_CASES)
+def test_positive_cases(encoded, decoded):
+    check_message_decodes(encoded, decoded)
 
 
 def test_all_positive_cases():
@@ -291,16 +291,16 @@ def test_all_positive_cases():
         assert_message_equal(expected, decoded)
 
 
-def test_negative_cases():
+@pytest.mark.parametrize("encoded, exception", NEGATIVE_CASES)
+def test_negative_cases(encoded, exception):
     """Test that all negative cases raise the expected exception. """
-    for (encoded, exception) in NEGATIVE_CASES:
-        try:
-            check_message_decodes(encoded, None)
-        except exception:
-            pass
-        else:
-            raise AssertionError(
-                'Expected exception {!s} has not been raised.'.format(exception))
+    try:
+        check_message_decodes(encoded, None)
+    except exception:
+        pass
+    else:
+        error_msg = 'Expected exception {!s} has not been raised.'
+        raise AssertionError(error_msg.format(exception))
 
 
 def test_header_parser():

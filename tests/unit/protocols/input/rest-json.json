@@ -15,6 +15,7 @@
           },
           "name": "OperationName"
         },
+        "params": {},
         "serialized": {
           "body": "",
           "uri": "/2014-01-01/jobs",

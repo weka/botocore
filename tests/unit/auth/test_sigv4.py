@@ -25,6 +25,7 @@ import os
 import logging
 import io
 import datetime
+import pytest
 from botocore.compat import six
 
 from tests import mock
@@ -88,7 +89,16 @@ class RawHTTPRequest(six.moves.BaseHTTPServer.BaseHTTPRequestHandler):
         self.error_message = message
 
 
-def test_generator():
+def _load_test_cases():
+    cases = set(os.path.splitext(i)[0] for i in os.listdir(TESTSUITE_DIR))
+    for case in cases:
+        if case in TESTS_TO_IGNORE:
+            continue
+        yield case
+
+
+@pytest.mark.parametrize("test_case", _load_test_cases())
+def test_generator(test_case):
     datetime_patcher = mock.patch.object(
         botocore.auth.datetime, 'datetime',
         mock.Mock(wraps=datetime.datetime)
@@ -100,12 +110,7 @@ def test_generator():
     # We have to change this because Sep 9, 2011 was actually
     # a Friday, but the tests have this set to a Monday.
     formatdate.return_value = 'Mon, 09 Sep 2011 23:36:00 GMT'
-    for test_case in set(os.path.splitext(i)[0]
-                         for i in os.listdir(TESTSUITE_DIR)):
-        if test_case in TESTS_TO_IGNORE:
-            log.debug("Skipping test: %s", test_case)
-            continue
-        _test_signature_version_4(test_case)
+    _test_signature_version_4(test_case)
     datetime_patcher.stop()
     formatdate_patcher.stop()
 
