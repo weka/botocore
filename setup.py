@@ -36,7 +36,7 @@ setup(
     description='Low-level, data-driven core of boto 3.',
     long_description=open('README.rst').read(),
     author='Amazon Web Services',
-    url='https://github.com/boto/botocore',
+    url='https://github.com/weka/botocore',
     scripts=[],
     packages=find_packages(exclude=['tests*']),
     package_data={'botocore': ['cacert.pem', 'data/*.json', 'data/*/*.json'],
